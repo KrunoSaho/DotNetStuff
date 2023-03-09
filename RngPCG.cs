@@ -26,7 +26,7 @@ public struct Rng
 
     public float NextFloat()
     {
-        return (float)(this.IncrementState() * System.MathF.Pow(2.0f, -32.0f));
+        return (float)(this.IncrementStateAvx() * System.MathF.Pow(2.0f, -32.0f));
     }
 
     public int Next(int max)
@@ -36,7 +36,7 @@ public struct Rng
 
     public uint Next(uint range)
     {
-        uint x = this.IncrementState();
+        uint x = this.IncrementStateAvx();
         ulong m = (ulong)x * (ulong)range;
         uint l = (uint)m;
         if (l < range)
@@ -50,7 +50,7 @@ public struct Rng
             }
             while (l < t)
             {
-                x = this.IncrementState();
+                x = this.IncrementStateAvx();
                 m = (ulong)x * (ulong)range;
                 l = (uint)m;
             }
@@ -64,11 +64,11 @@ public struct Rng
 
         this.state = oldstate * 6364136223846793005UL + (this.inc | 1);
 
-        uint xorshifted = (uint)(((oldstate >> 18) ^ oldstate) >> 27);
+        uint xorShifted = (uint)(((oldstate >> 18) ^ oldstate) >> 27);
         uint rot = (uint)(oldstate >> 59);
 
-        uint a = xorshifted >> (int)rot;
-        uint b = xorshifted << (int)((-rot) & 31);
+        uint a = xorShifted >> (int)rot;
+        uint b = xorShifted << (int)((-rot) & 31);
 
         return a | b;
     }
