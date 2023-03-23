@@ -1,15 +1,7 @@
-using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
-
-namespace Sim.Util;
-
-// *Really* minimal PCG32 code / (c) 2014 M.E. O'Neill / pcg-random.org
-// Licensed under Apache License 2.0 (NO WARRANTY, etc. see website)
-// Modified by Kruno
-
 public struct Rng
 {
-    private ulong state, inc;
+    private ulong state;
+    private readonly ulong inc;
 
     public Rng(ulong state, ulong inc)
     {
@@ -26,7 +18,7 @@ public struct Rng
 
     public float NextFloat()
     {
-        return (float)(this.IncrementStateAvx() * System.MathF.Pow(2.0f, -32.0f));
+        return (float)(this.AdvanceAvx() * System.MathF.Pow(2.0f, -32.0f));
     }
 
     public int Next(int max)
@@ -34,53 +26,42 @@ public struct Rng
         return (int)this.Next((uint)max);
     }
 
+
     public uint Next(uint range)
     {
-        uint x = this.IncrementStateAvx();
+        uint x = this.AdvanceAvx();
         ulong m = (ulong)x * (ulong)range;
         uint l = (uint)m;
+        uint t = (uint)(-range);
+
         if (l < range)
         {
-            uint t = (uint)(-range);
             if (t >= range)
             {
                 t -= range;
                 if (t >= range)
                     t %= range;
             }
+
             while (l < t)
             {
-                x = this.IncrementStateAvx();
+                x = this.AdvanceAvx();
                 m = (ulong)x * (ulong)range;
                 l = (uint)m;
             }
         }
+
         return (uint)(m >> 32);
     }
 
-    public uint IncrementState()
+    public uint AdvanceAvx()
     {
-        ulong oldstate = this.state;
+        var oldState = Vector128.Create<ulong>(this.state);
 
-        this.state = oldstate * 6364136223846793005UL + (this.inc | 1);
-
-        uint xorShifted = (uint)(((oldstate >> 18) ^ oldstate) >> 27);
-        uint rot = (uint)(oldstate >> 59);
-
-        uint a = xorShifted >> (int)rot;
-        uint b = xorShifted << (int)((-rot) & 31);
-
-        return a | b;
-    }
-
-    public uint IncrementStateAvx()
-    {
-        var oldstate = Vector128.Create<ulong>(this.state);
-
-        this.state = this.state * 6364136223846793005UL + (this.inc | 1);
+        this.state = oldState[0] * 6364136223846793005UL + (this.inc | 1);
 
         var xorShifted = Avx2.ShiftRightLogical(
-            Avx2.Xor(Avx2.ShiftRightLogical(oldstate, 18), oldstate),
+            Avx2.Xor(Avx2.ShiftRightLogical(oldState, 18), oldState),
             27
         ).AsUInt32();
 
@@ -93,4 +74,20 @@ public struct Rng
         return Avx2.Or(a, b).AsUInt32()[0];
     }
 
+
+    // For reference
+    // public uint Advance()
+    // {
+    //     ulong oldState = this.state;
+
+    //     this.state = oldState * 6364136223846793005UL + (this.inc | 1);
+
+    //     uint xorShifted = (uint)(((oldState >> 18) ^ oldState) >> 27);
+    //     uint rot = (uint)(oldState >> 59);
+
+    //     uint a = xorShifted >> (int)rot;
+    //     uint b = xorShifted << (int)((-rot) & 31);
+
+    //     return a | b;
+    // }
 }
