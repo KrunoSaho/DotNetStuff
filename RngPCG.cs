@@ -12,8 +12,8 @@ public struct Rng
     public int Between(int min, int max)
     {
         var c = this.NextFloat();
-        var res = (int)(min + ((max - min) * c));
-        return res;
+        var res = MathF.Round(min + ((max - min) * c));
+        return (int)res;
     }
 
     public float NextFloat()
